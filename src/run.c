@@ -26,13 +26,15 @@ void ss_loop() {
     char **args = ss_split(line);
     status = ss_run(args);
 
-    if (strcmp(line, history->last->cur) != 0) {
+    if (strcmp(line, history->first->prev->cur) != 0) {
       fprintf(histf, "%s\n", line);
       list_append(history, line);
     }
 
-    for (int i = 0; args[i] != NULL; i++)
+    for (int i = 0; args[i] != NULL; i++) {
+      printf("'%s'\n", args[i]);
       free(args[i]);
+    }
     free(args);
   } while (status);
   destroy();

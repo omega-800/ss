@@ -1,4 +1,5 @@
 #include "lib.h"
+#include "global.h"
 #include "sys/stat.h"
 #include <errno.h>
 #include <stdio.h>
@@ -12,6 +13,10 @@ int is_space(const char c) {
          c == '\e' || c == '\f' || c == '\v';
 }
 
+int is_quote(const char c) {
+  return c == '\'' || c == '"' || c == '`';
+} 
+
 int is_empty(const char *s) {
   while (*s != '\0') {
     if (!is_space((unsigned char)*s))
@@ -22,13 +27,13 @@ int is_empty(const char *s) {
 }
 
 void free_list(struct ListItem *item) {
-  item = item->first;
+  item = item->first->next;
   do {
     struct ListItem *prev = item;
     item = item->next;
     free(prev->cur);
     free(prev);
-  } while (item != item->last);
+  } while (item != item->first);
   free(item->cur);
   free(item);
 }
@@ -36,20 +41,63 @@ void free_list(struct ListItem *item) {
 struct ListItem *list_append(struct ListItem *list, char *value) {
   struct ListItem *append = malloc(sizeof(struct ListItem));
   append->cur = value;
-  append->last = append;
   append->first = list->first;
   append->next = list->first;
-  append->prev = list->last;
+  append->prev = list->first->next;
 
-  list->last->next = append;
-  list->last->last = append;
+  list->first->prev->next = append;
   list->first->prev = append;
-  struct ListItem *cur = list->first;
-  do {
-    cur->last = append;
-    cur = cur->next;
-  } while (cur != list->first);
-  return append; 
+  return append;
+}
+
+char *restrcpy(char *dest, const char *src) {
+  size_t len = strlen(src) + 1;
+  dest = realloc(dest, len);
+  memcpy(dest, src, len);
+  return dest;
+}
+
+void cut(char *str, size_t size) {
+  if (!str)
+    return;
+  size_t len = strlen(str);
+  if (size >= len) {
+    str[0] = '\0';
+    return;
+  }
+  str[len - size + 1] = '\0';
+}
+
+void append(char *str, char c) {
+  if (!str)
+    return;
+  size_t len = strlen(str);
+  str[len] = c;
+  str[len + 1] = '\0';
+}
+
+char *insertat(char *str, size_t pos, char c) {
+  if (!str)
+    return str;
+  size_t len = strlen(str);
+  if (pos > len)
+    return str;
+  for (int i = len + 1; i > pos; i--)
+    str[i] = str[i - 1];
+  str[pos] = c;
+  return str;
+}
+
+char *removeat(char *str, size_t pos) {
+  if (!str)
+    return str;
+  size_t len = strlen(str);
+  if (pos > len)
+    return str;
+  for (size_t i = pos; i < len; i++)
+    str[i] = str[i + 1];
+  str[len] = '\0';
+  return str;
 }
 
 char *concat(const char *s1, const char *s2) {
@@ -113,7 +161,6 @@ FILE *conffile() {
   return file;
 }
 
-#define RL_BUF 1024
 struct ListItem *filelines(FILE *file) {
   if (!file) {
     err("no file");
@@ -169,11 +216,6 @@ struct ListItem *filelines(FILE *file) {
   free(line);
   cur->next = first;
   first->prev = last;
-
-  do {
-    cur->last = last;
-    cur = cur->next;
-  } while (cur != last);
 
   return first;
 }

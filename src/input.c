@@ -5,17 +5,35 @@
 
 void ss_prompt(const char *text) {
   printf("\33[2K\r");
-  printf("> %s", text);
+  if (text)
+    printf("> %s", text);
+  else
+    printf("> ");
+}
+void ss_chpos(const int sub) {
+  // printf("\033[1;%dH", new);
+  /*
+  if (new > old)
+    for (int i = new - 1; i > old; i--)
+      printf("\033[1C");
+  if (old > new)
+    for (int i = old; i > new; i--)
+      printf("\033[1D");
+      */
+  for (int i = 0; i < sub; i++)
+    printf("\033[1D");
 }
 
-#define RL_BUF 1024
 char *ss_read() {
   ss_prompt("");
   size_t len = RL_BUF;
-  char *str = malloc(len * sizeof(char));
-  char *prev = malloc(len * sizeof(char));
-  if (!str)
+  char *str = calloc(sizeof(char), len);
+  if (!str) {
     err("cannot allocate input string");
+    return str;
+  }
+  str[0] = '\0';
+  char *prev = calloc(sizeof(char), len);
 
   size_t pos = 0;
   struct ListItem *curhist = NULL;
@@ -27,8 +45,10 @@ char *ss_read() {
         free(prev);
       printf("\n");
       return str;
-    }
-    if (c == 27) {
+    } else if (c == 0x7f && pos > 0) {
+      pos--;
+      str = removeat(str, pos);
+    } else if (c == 27) {
       int c2 = getch();
       int c3 = getch();
       if (c2 == 91) {
@@ -36,48 +56,56 @@ char *ss_read() {
         case 65:
           // up
           if (curhist == NULL) {
-            //strcpy(prev, str);
-            curhist = history->last;
+            prev = restrcpy(prev, str);
+            curhist = history->first->prev;
           } else if (curhist != history->first) {
             curhist = curhist->prev;
+          } else {
+            break;
           }
-          //strcpy(str, curhist->cur);
-          ss_prompt(str);
+          str = restrcpy(str, curhist->cur);
+          len = strlen(str);
+          pos = len;
           break;
         case 66:
           // down
-          if (curhist == history->last) {
+          if (curhist == history->first->prev) {
             curhist = NULL;
-            //strcpy(str, prev);
+            str = restrcpy(str, prev);
+            len = strlen(str);
+            pos = len;
           } else if (curhist != NULL) {
             curhist = curhist->next;
-            //strcpy(str, curhist->cur);
+            str = restrcpy(str, curhist->cur);
+            len = strlen(str);
+            pos = len;
           }
-          ss_prompt(str);
           break;
         case 67:
           // right
-          printf("\033[1C");
+          if (pos < strlen(str))
+            pos++;
           break;
         case 68:
           // left
-          printf("\033[1D");
+          if (pos > 0)
+            pos--;
           break;
         }
       }
-      continue;
+    } else {
+      size_t l = strlen(str);
+      if (l + 1 >= len) {
+        len += (((int)l / RL_BUF) + 1) * sizeof(char);
+        str = realloc(str, len);
+        if (!str)
+          err("cannot allocate input string");
+      }
+      str = insertat(str, pos, c);
+      pos++;
     }
-
-    printf("%c", c);
-    str[pos] = c;
-    pos++;
-    if (pos < len)
-      continue;
-
-    len += RL_BUF * sizeof(char);
-    str = realloc(str, len);
-    if (!str)
-      err("cannot allocate input string");
+    ss_prompt(str);
+    ss_chpos(strlen(str) - pos);
   }
 }
 
@@ -92,14 +120,25 @@ char **ss_split(const char *line) {
   char **tokens = malloc(tokenslen);
   int itokens = 0;
 
+  char quote = '0';
+
   for (int i = 0; i <= len; i++) {
-    if (is_space(line[i]) || i == len) {
+    if ((is_space(line[i]) && quote == '0') || i == len) {
       tok[itok] = '\0';
       tokens[itokens] = tok;
       toklen = TOK_BUF * sizeof(char);
       tok = malloc(toklen);
       itok = 0;
       itokens++;
+    } else if (is_quote(line[i])) {
+      if (quote == line[i])
+        quote = '0';
+      else if (quote == '0')
+        quote = line[i];
+      else {
+        tok[itok] = line[i];
+        itok++;
+      }
     } else {
       tok[itok] = line[i];
       itok++;
