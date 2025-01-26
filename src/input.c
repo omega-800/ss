@@ -71,7 +71,12 @@ char *ss_read() {
           // down
           if (curhist == history->first->prev) {
             curhist = NULL;
-            str = restrcpy(str, prev);
+            if (prev)
+              str = restrcpy(str, prev);
+            else {
+              str = calloc(sizeof(char), RL_BUF);
+              str[0] = '\0';
+            }
             len = strlen(str);
             pos = len;
           } else if (curhist != NULL) {

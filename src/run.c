@@ -31,10 +31,8 @@ void ss_loop() {
       list_append(history, line);
     }
 
-    for (int i = 0; args[i] != NULL; i++) {
-      printf("'%s'\n", args[i]);
+    for (int i = 0; args[i] != NULL; i++) 
       free(args[i]);
-    }
     free(args);
   } while (status);
   destroy();

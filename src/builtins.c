@@ -7,6 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+int ss_schutzstaffel(char **args) {
+  printf("%s\n%s\n", "My heart goes out to all of you <3", "https://github.com/omega-800/ss/blob/main/src/sus.jpg");
+  return 1;
+}
+
 int ss_history(char **args) {
   int i = 0;
   do {
@@ -55,7 +60,7 @@ int ss_cd(char **args) {
 
 // dash
 char *ss_builtins[] = {
-    "cd", "help", "exit", "exec", "history"
+    "cd", "help", "exit", "exec", "history", "schutzstaffel"
     // - test, printf, pwd, ls, true, false, .
     /*
       ":",    "true", ".",        "alias",  "bg",      "command",   "eval",
@@ -74,7 +79,7 @@ int ss_help(char **args) {
 }
 
 int (*ss_fn[])(char **) = {
-    &ss_cd, &ss_help, &ss_exit, &ss_exec, &ss_history
+    &ss_cd, &ss_help, &ss_exit, &ss_exec, &ss_history, &ss_schutzstaffel
     /*
       &ss_ne, &ss_ne, &ss_ne, &ss_ne, &ss_ne, &ss_ne,
     &ss_ne,  &ss_ne, &ss_ne, &ss_ne, &ss_ne, &ss_ne,
