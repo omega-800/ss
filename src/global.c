@@ -15,5 +15,6 @@ void destroy() {
     fclose(histf);
   if (conff != NULL)
     fclose(conff);
-  free_list(history);
+  if (history)
+    free_list(history);
 }

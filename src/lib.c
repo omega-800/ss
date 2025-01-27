@@ -27,6 +27,7 @@ int is_empty(const char *s) {
 }
 
 void free_list(struct ListItem *item) {
+  if(!item) return;
   item = item->first->next;
   do {
     struct ListItem *prev = item;
@@ -45,8 +46,12 @@ struct ListItem *list_append(struct ListItem *list, char *value) {
   append->next = list->first;
   append->prev = list->first->next;
 
-  list->first->prev->next = append;
-  list->first->prev = append;
+  if(list){
+    list->first->prev->next = append;
+    list->first->prev = append;
+  } else {
+    list = append;
+  }
   return append;
 }
 
@@ -127,6 +132,7 @@ void err(const char *msg) {
   exit(1);
 }
 
+//FIXME: confoosing function naming
 FILE *open_or_die(char *path, const char *filename, const char *modes) {
   char *msg = malloc(128);
   if (mkdir(path, 0700) != 0 && EEXIST != errno) {
@@ -211,12 +217,14 @@ struct ListItem *filelines(FILE *file) {
     }
   }
 
-  struct ListItem *last = cur->prev;
-  cur = last;
-  free(last->next);
+  if(cur->prev) {
+    struct ListItem *last = cur->prev;
+    cur = last;
+    free(last->next);
+    cur->next = first;
+    first->prev = last;
+  }
   free(line);
-  cur->next = first;
-  first->prev = last;
 
   return first;
 }

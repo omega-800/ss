@@ -55,6 +55,7 @@ char *ss_read() {
         switch (c3) {
         case 65:
           // up
+          if (!history) break;
           if (curhist == NULL) {
             prev = restrcpy(prev, str);
             curhist = history->first->prev;
@@ -69,6 +70,7 @@ char *ss_read() {
           break;
         case 66:
           // down
+          if (!history) break;
           if (curhist == history->first->prev) {
             curhist = NULL;
             if (prev)

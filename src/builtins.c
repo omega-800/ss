@@ -14,6 +14,10 @@ int ss_schutzstaffel(char **args) {
 
 int ss_history(char **args) {
   int i = 0;
+  if (!history) {
+    printf("%s\n", "nothing to see here, i swear"); 
+    return 1;
+  }
   do {
     printf("%i: %s\n", i, history->cur);
     history = history->next;
@@ -87,3 +91,15 @@ int (*ss_fn[])(char **) = {
     &ss_ne, &ss_ne,   &ss_ne, &ss_ne, &ss_ne, &ss_ne, &ss_ne
 */
 };
+
+int ss_run(char **args) {
+  if (args[0] == NULL)
+    return 1;
+
+  for (int i = 0; i < sizeof(ss_builtins) / sizeof(char *); i++)
+    if (strcmp(ss_builtins[i], args[0]) == 0)
+      return (*ss_fn[i])(args);
+
+  return ss_exec(args);
+}
+
