@@ -168,6 +168,7 @@ struct ListItem *filelines(FILE *file) {
     exit(1);
   }
 
+  //FIXME: crashes if file is empty
   struct ListItem *first = malloc(sizeof(struct ListItem));
   struct ListItem *cur = first;
   size_t len = RL_BUF * sizeof(char);
