@@ -5,6 +5,7 @@ int is_quote(const char c);
 int is_empty(const char *s); 
 void cut(char *str, size_t size);
 void append(char *str, char c);
+char *substr(const char *src, char *dest, size_t from, size_t to);
 char *restrcpy(char *dest, const char *src);
 char *insertat(char *str, size_t pos, char c);
 char *removeat(char *str, size_t pos);

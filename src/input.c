@@ -55,7 +55,8 @@ char *ss_read() {
         switch (c3) {
         case 65:
           // up
-          if (!history) break;
+          if (!history)
+            break;
           if (curhist == NULL) {
             prev = restrcpy(prev, str);
             curhist = history->first->prev;
@@ -65,12 +66,12 @@ char *ss_read() {
             break;
           }
           str = restrcpy(str, curhist->cur);
-          len = strlen(str);
-          pos = len;
+          pos = len = strlen(str);
           break;
         case 66:
           // down
-          if (!history) break;
+          if (!history)
+            break;
           if (curhist == history->first->prev) {
             curhist = NULL;
             if (prev)
@@ -79,14 +80,11 @@ char *ss_read() {
               str = calloc(sizeof(char), RL_BUF);
               str[0] = '\0';
             }
-            len = strlen(str);
-            pos = len;
           } else if (curhist != NULL) {
             curhist = curhist->next;
             str = restrcpy(str, curhist->cur);
-            len = strlen(str);
-            pos = len;
           }
+          pos = len = strlen(str);
           break;
         case 67:
           // right
@@ -103,7 +101,7 @@ char *ss_read() {
     } else {
       size_t l = strlen(str);
       if (l + 1 >= len) {
-        len += (((int)l / RL_BUF) + 1) * sizeof(char);
+        len = (((int)l / RL_BUF) + 1) * sizeof(char) * RL_BUF;
         str = realloc(str, len);
         if (!str)
           err("cannot allocate input string");

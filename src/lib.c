@@ -13,9 +13,7 @@ int is_space(const char c) {
          c == '\e' || c == '\f' || c == '\v';
 }
 
-int is_quote(const char c) {
-  return c == '\'' || c == '"' || c == '`';
-} 
+int is_quote(const char c) { return c == '\'' || c == '"' || c == '`'; }
 
 int is_empty(const char *s) {
   while (*s != '\0') {
@@ -27,7 +25,8 @@ int is_empty(const char *s) {
 }
 
 void free_list(struct ListItem *item) {
-  if(!item) return;
+  if (!item)
+    return;
   item = item->first->next;
   do {
     struct ListItem *prev = item;
@@ -40,19 +39,31 @@ void free_list(struct ListItem *item) {
 }
 
 struct ListItem *list_append(struct ListItem *list, char *value) {
-  struct ListItem *append = malloc(sizeof(struct ListItem));
-  append->cur = value;
-  append->first = list->first;
-  append->next = list->first;
-  append->prev = list->first->next;
+  struct ListItem *n = malloc(sizeof(struct ListItem));
+  n->cur = value;
 
-  if(list){
-    list->first->prev->next = append;
-    list->first->prev = append;
+  if (list) {
+    n->first = list->first;
+    n->next = list->first;
+    n->prev = list->first->next;
+
+    list->first->prev->next = n;
+    list->first->prev = n;
   } else {
-    list = append;
+    n->first = n;
+    n->prev = n;
+    n->next = n;
+    list = n;
   }
-  return append;
+  return n;
+}
+
+char *substr(const char *src, char *dest, size_t from, size_t to) {
+  if (from > to || to > strlen(src))
+    return dest;
+  memcpy(dest, src + from, to - from + 1);
+  dest[to] = '\0';
+  return dest;
 }
 
 char *restrcpy(char *dest, const char *src) {
@@ -132,7 +143,7 @@ void err(const char *msg) {
   exit(1);
 }
 
-//FIXME: confoosing function naming
+// FIXME: confoosing function naming
 FILE *open_or_die(char *path, const char *filename, const char *modes) {
   char *msg = malloc(128);
   if (mkdir(path, 0700) != 0 && EEXIST != errno) {
@@ -174,7 +185,7 @@ struct ListItem *filelines(FILE *file) {
     exit(1);
   }
 
-  //FIXME: crashes if file is empty
+  // FIXME: crashes if file is empty
   struct ListItem *first = malloc(sizeof(struct ListItem));
   struct ListItem *cur = first;
   size_t len = RL_BUF * sizeof(char);
@@ -217,7 +228,7 @@ struct ListItem *filelines(FILE *file) {
     }
   }
 
-  if(cur->prev) {
+  if (cur->prev) {
     struct ListItem *last = cur->prev;
     cur = last;
     free(last->next);
