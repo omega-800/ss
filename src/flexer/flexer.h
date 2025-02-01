@@ -1,44 +1,15 @@
 enum TokenType { 
-  Keyword,
-  Identifier,
-  String, 
-  Number,
-  Operator,
-};
-
-struct Token {
-  enum TokenType type;
-  char *value;
-};
-
-struct TokenArray {
-  struct Token **tokens;
-  int len;
-};
-
-struct TokenArray flex(const char *str);
-void free_tokens(struct TokenArray toks);
-
-enum TokenType2 { 
-  // Primitives
-  TT_Number,
-  TT_String,
-  // keywords
   TT_If,
   TT_Then,
   TT_Else,
   TT_True,
   TT_False,
-  TT_Each,
-  TT_Map,
-  TT_Filter,
-  TT_List,
-  // identifier
   TT_Identifier,
-  // Symbols
+  TT_String,
+  TT_Number,
   TT_Leq,           // <=
   TT_Less,          // <
-  TT_Equals,        // ==
+  TT_Eq,            // ==
   TT_Neq,           // !=
   TT_Assign,        // =
   TT_Geq,           // >=
@@ -63,7 +34,7 @@ enum TokenType2 {
   TT_At,            // @
   TT_LBracket,      // [
   TT_RBracket,      // ]
-  TT_Backslash,     // \
+  TT_Backslash,     /* \ */
   TT_Circumflex,    // ^
   TT_GraveAccent,   // `
   TT_LBrace,        // {
@@ -75,3 +46,17 @@ enum TokenType2 {
   TT_Pound,         // #
 };
 
+struct Token {
+  enum TokenType type;
+  char *value;
+};
+
+struct TokenArray {
+  struct Token **tokens;
+  int len;
+};
+
+struct TokenArray flex(const char *str);
+void free_tokens(struct TokenArray toks);
+void print_tokens(struct TokenArray toks);
+void print_type(enum TokenType type);

@@ -1,5 +1,7 @@
 #include "builtins.h"
+#include "flexer/evalolator.h"
 #include "flexer/flexer.h"
+#include "flexer/parser.h"
 #include "global.h"
 #include "input.h"
 #include "lib.h"
@@ -19,11 +21,20 @@ void test() {
   if (fread(line, fsize, 1, file)) {
     line[fsize] = '\0';
     struct TokenArray toks = flex(line);
+    //print_tokens(toks);
+    struct ASTNode *ast = parse_ast(toks);
+    //print_ast(ast);
+    struct Primitive *res = evalolate(ast);
+    print_primitive(res);
+    printf("\n");
+    free_primitive(res);
+    free_ast(ast);
     free_tokens(toks);
   } else {
     printf("error reading file");
   }
   fclose(file);
+  free(line);
   exit(1);
 }
 
