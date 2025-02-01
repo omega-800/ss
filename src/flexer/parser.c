@@ -22,6 +22,7 @@ void free_primitive(struct Primitive *prim) {
 void free_ast(struct ASTNode *ast) {
   switch (ast->type) {
   case NT_IfElse:
+    free_ast(ast->v.ifelse->condition);
     free_ast(ast->v.ifelse->truthy);
     free_ast(ast->v.ifelse->falsy);
     free(ast->v.ifelse);
@@ -43,7 +44,7 @@ void free_ast(struct ASTNode *ast) {
     break;
   case NT_Primitive:
     // free(ast->v.prim->value);
-    //free_primitive(ast->v.prim);
+    // free_primitive(ast->v.prim);
     free(ast->v.prim);
     break;
   }
@@ -71,13 +72,11 @@ void print_ast(struct ASTNode *ast) {
     printf("{");
   switch (ast->type) {
   case NT_IfElse:
-    printf("if?");
     print_ast(ast->v.ifelse->condition);
-    printf("?then->");
+    printf("?");
     print_ast(ast->v.ifelse->truthy);
-    printf("<-else->");
+    printf(":");
     print_ast(ast->v.ifelse->falsy);
-    printf("<-");
     break;
   case NT_Binary:
     print_ast(ast->v.bin->left);
@@ -115,8 +114,35 @@ struct ASTNode *parse_gr(struct TokenArray tokens, int *cursor) {
 }
 
 struct ASTNode *parse_ifelse(struct TokenArray tokens, int *cursor) {
+  if (tokens.tokens[*cursor]->type != TT_If)
+    return NULL;
+  struct ASTNode *node = malloc(sizeof(struct ASTNode));
+  struct IfElse *val = malloc(sizeof(struct IfElse));
+  int prevcur = *cursor;
+  node->type = NT_IfElse;
+  node->v.ifelse = val;
   (*cursor)++;
-  return malloc(sizeof(struct IfElse));
+  node->v.ifelse->condition = parse_statement(tokens, cursor);
+  if (tokens.tokens[*cursor]->type != TT_Then)
+    goto freec;
+  (*cursor)++;
+  node->v.ifelse->truthy = parse_statement(tokens, cursor);
+  if (tokens.tokens[*cursor]->type != TT_Else)
+    goto freet;
+  (*cursor)++;
+  node->v.ifelse->falsy = parse_statement(tokens, cursor);
+  (*cursor)++;
+
+  return node;
+freet:
+  free_ast(node->v.ifelse->truthy);
+  goto freec;
+freec:
+  free_ast(node->v.ifelse->condition);
+  free(node->v.ifelse);
+  free(node);
+  (*cursor) = prevcur;
+  return NULL;
 }
 
 struct ASTNode *parse_un(struct TokenArray tokens, int *cursor) {
@@ -195,12 +221,14 @@ struct ASTNode *parse_bin(struct TokenArray tokens, int *cursor) {
   node->v.bin = val;
   int prevc = *cursor;
   node->v.bin->left = parse_expression(tokens, cursor);
-  if (is_bin_op(tokens.tokens[*cursor]->type)) {
+  if (node->v.bin->left != NULL && *cursor < tokens.len &&
+      is_bin_op(tokens.tokens[*cursor]->type)) {
     node->v.bin->value = tokens.tokens[*cursor]->type;
     (*cursor)++;
     node->v.bin->right = parse_expression(tokens, cursor);
   } else {
-    free_ast(node->v.bin->left);
+    if (node->v.bin->left != NULL)
+      free_ast(node->v.bin->left);
     free(node->v.bin);
     free(node);
     // this is too hacky
@@ -250,6 +278,11 @@ char *parse_str(char *str) {
 }
 
 struct ASTNode *parse_prim(struct TokenArray tokens, int *cursor) {
+  if (tokens.tokens[*cursor]->type != TT_String &&
+      tokens.tokens[*cursor]->type != TT_Number &&
+      tokens.tokens[*cursor]->type != TT_False &&
+      tokens.tokens[*cursor]->type != TT_True)
+    return NULL;
   struct ASTNode *node = malloc(sizeof(struct ASTNode));
   node->type = NT_Primitive;
   struct Primitive *val = malloc(sizeof(struct Primitive));
@@ -281,11 +314,9 @@ struct ASTNode *parse_statement(struct TokenArray tokens, int *cursor) {
     return ast;
   ast = parse_bin(tokens, cursor);
   if (ast == NULL)
-    ast = parse_un(tokens, cursor);
-  if (ast == NULL)
     ast = parse_expression(tokens, cursor);
   if (ast == NULL)
-    ast = parse_statement(tokens, cursor);
+    ast = parse_ifelse(tokens, cursor);
   return ast;
 }
 

@@ -11,7 +11,8 @@ struct PrimitiveArena {
   size_t cap;
 };
 struct Primitive *eval_un(struct ASTNode *node, struct PrimitiveArena *arena);
-struct Primitive *eval_ifelse(struct ASTNode *node, struct PrimitiveArena *arena);
+struct Primitive *eval_ifelse(struct ASTNode *node,
+                              struct PrimitiveArena *arena);
 struct Primitive *eval_gr(struct ASTNode *node, struct PrimitiveArena *arena);
 struct Primitive *eval_prim(struct ASTNode *node, struct PrimitiveArena *arena);
 struct Primitive *eval_bin(struct ASTNode *node, struct PrimitiveArena *arena);
@@ -58,9 +59,22 @@ struct Primitive *eval_gr(struct ASTNode *node, struct PrimitiveArena *arena) {
   return eval_ast(node->v.gr->child, arena);
 }
 
-struct Primitive *eval_ifelse(struct ASTNode *node, struct PrimitiveArena *arena) { return NULL; }
+struct Primitive *eval_ifelse(struct ASTNode *node,
+                              struct PrimitiveArena *arena) {
+  struct Primitive *condition = eval_ast(node->v.ifelse->condition, arena);
+  if (condition->type != PT_Boolean) {
+    printf("eval_bin_un: erroneous condition type");
+    exit(1);
+  }
+  if(condition->v.b) 
+    return eval_ast(node->v.ifelse->truthy, arena);
+  return eval_ast(node->v.ifelse->falsy, arena);
+}
 
-struct Primitive *eval_prim(struct ASTNode *node, struct PrimitiveArena *arena) { return node->v.prim; }
+struct Primitive *eval_prim(struct ASTNode *node,
+                            struct PrimitiveArena *arena) {
+  return node->v.prim;
+}
 
 char *eval_bin_str(const enum TokenType op, const struct Primitive *lhs,
                    const struct Primitive *rhs) {
@@ -190,12 +204,12 @@ struct Primitive *evalolate(struct ASTNode *ast) {
   struct Primitive *res = malloc(sizeof(struct Primitive));
   struct Primitive *val = eval_ast(ast, arena);
   res = memcpy(res, val, sizeof(struct Primitive));
-/*
-  if(res->type == PT_String) {
-    res->v.str = malloc(strlen(val->v.str)+1);
-    res->v.str = memcpy(res->v.str, val->v.str, strlen(val->v.str) );
-  }
-*/
+  /*
+    if(res->type == PT_String) {
+      res->v.str = malloc(strlen(val->v.str)+1);
+      res->v.str = memcpy(res->v.str, val->v.str, strlen(val->v.str) );
+    }
+  */
   free(arena->val);
   free(arena);
   return res;

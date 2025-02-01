@@ -8,6 +8,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+void run_eval(const char *line) {
+    struct TokenArray toks = flex(line);
+    //print_tokens(toks);
+    struct ASTNode *ast = parse_ast(toks);
+    //print_ast(ast);
+    struct Primitive *res = evalolate(ast);
+    print_primitive(res);
+    printf("\n");
+    free_primitive(res);
+    free_ast(ast);
+    free_tokens(toks);
+}
+
 void test() {
   FILE *file = fopen("test.ss", "a+");
   if (file == NULL) {
@@ -20,16 +33,7 @@ void test() {
   char *line = malloc(fsize + 1);
   if (fread(line, fsize, 1, file)) {
     line[fsize] = '\0';
-    struct TokenArray toks = flex(line);
-    //print_tokens(toks);
-    struct ASTNode *ast = parse_ast(toks);
-    //print_ast(ast);
-    struct Primitive *res = evalolate(ast);
-    print_primitive(res);
-    printf("\n");
-    free_primitive(res);
-    free_ast(ast);
-    free_tokens(toks);
+    run_eval(line);
   } else {
     printf("error reading file");
   }
@@ -49,7 +53,9 @@ void ss_loop() {
       continue;
     }
     char **args = ss_split(line);
-    status = ss_run(args);
+    //status = ss_run(args);
+    run_eval(line);
+    status = 1;
 
     if (history && strcmp(line, history->first->prev->cur) != 0) {
       fprintf(histf, "%s\n", line);
