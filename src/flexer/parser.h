@@ -1,21 +1,30 @@
 /**
  * Program is ALWAYS only ONE statement, ok? get your imperative ass outta here
- * <Program>    ::= <Statement>
- * <Statement>  ::= <IfElse> | <Binary> | <Unary> | <Group> | <Primitive>
- * <IfElse>     ::= 'if' <Statement> 'then' <Statement> 'else' <Statement>
- * <Binary>     ::= <Expression> ('%'|'^'|'*'|'/'|'+'|'-'|'=='|'>'|'>='|'<'|'<='|'!='|'&&'|'||') <Expression>
- * <Expression> ::= (<Group> | <Primitive>)
- * <Unary>      ::= ('!'|'-') <Expression>
- * <Group>      ::= '(' <Statement> ')'
- * <Primitive>  ::= <String> | <Number> | <Boolean>
- * <String>     ::= STR 
- * <Number>     ::= NUM
- * <Boolean>    ::= BIN
+ * <Program>      ::= <Statement>
+ * <Statement>    ::= <IfElse> | <Binary> | <Unary> | <Group> | <Primitive> | <LetIn> | <Call>
+ * <IfElse>       ::= 'if' <Statement> 'then' <Statement> 'else' <Statement>
+ * <LetIn>        ::= 'let' <Assignments> 'in' <Statement>
+ * <Call>         ::= <Identifier> <Expression>*
+ * <Assignments>  ::= <Assignment>+
+ * <Assignment>   ::= <Identifier>+ = <Statement> ';'
+ * TODO: add identifier to binary / expression
  *
+ * <Binary>       ::= <Expression> ('%'|'^'|'*'|'/'|'+'|'-'|'=='|'>'|'>='|'<'|'<='|'!='|'&&'|'||') <Expression>
+ * <Expression>   ::= (<Group> | <Unary> | <Primitive>)
+ * <Unary>        ::= ('!'|'-') <Expression>
+ * <Group>        ::= '(' <Statement> ')'
+ * <Primitive>    ::= <String> | <Number> | <Boolean>
+ * <String>       ::= STR 
+ * <Number>       ::= NUM
+ * <Boolean>      ::= BIN
+ * <Identifier>   ::= ID
+ *
+ * ID  = [^ ]*
  * STR = ".*"
  * NUM = \d+
  * BIN = (true|false)
  */
+#include <stddef.h>
 
 enum PrimitiveType {
   PT_Number,
@@ -29,17 +38,47 @@ enum ASTNodeType {
   NT_Unary,
   NT_Group,
   NT_Primitive,
+  NT_Identifier,
+  NT_LetIn,
+  NT_Call,
 };
 
 enum ASTBinPrecedence {
   P_Unary,    // ! -
-  P_Paren,    // ( ... )
+  P_Paren,    // ( )
   P_Exponent, // ^
   P_Bin1,     // * /
   P_Bin2,     // + - == >= <= &&
 };
 
 typedef struct ASTNode ASTNode;
+
+struct Assignment {
+  char *name;
+  char **args;
+  size_t len;
+  size_t cap;
+  struct ASTNode *val;
+};
+
+struct LetIn {
+  struct Assignment **let;
+  size_t len;
+  size_t cap;
+  struct ASTNode *in;
+};
+
+struct Call {
+  char *name;
+  struct ASTNode **args;
+  size_t len;
+  size_t cap;
+};
+
+struct Unary {
+  int value;
+  ASTNode *child;
+};
 
 struct IfElse {
   ASTNode *condition;
@@ -51,11 +90,6 @@ struct Binary {
   int value;
   ASTNode *left;
   ASTNode *right;
-};
-
-struct Unary {
-  int value;
-  ASTNode *child;
 };
 
 struct Group {
@@ -79,6 +113,8 @@ struct ASTNode {
     struct Unary *un;
     struct Group *gr;
     struct Primitive *prim;
+    struct LetIn *letin;
+    struct Call *call;
   } v;
 };
 
@@ -87,4 +123,5 @@ struct ASTNode *parse_ast(const struct TokenArray tokens);
 void free_ast(struct ASTNode *ast);
 void print_ast(struct ASTNode *ast);
 void print_primitive(const struct Primitive *prim);
+void print_primitive_type(enum PrimitiveType);
 void free_primitive(struct Primitive *prim);

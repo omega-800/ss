@@ -40,7 +40,7 @@ char *ss_read() {
   while (1) {
     int c = getch();
     if (c == '\n' || c == EOF) {
-      str[pos] = '\0';
+      str[strlen(str)] = '\0';
       if (prev != str)
         free(prev);
       printf("\n");

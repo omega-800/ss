@@ -8,21 +8,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-void run_eval(const char *line) {
+int run_eval(const char *line) {
+    //printf("%s\n",line);
     struct TokenArray toks = flex(line);
     //print_tokens(toks);
     struct ASTNode *ast = parse_ast(toks);
     //print_ast(ast);
+    //printf("\n");
     struct Primitive *res = evalolate(ast);
     print_primitive(res);
     printf("\n");
     free_primitive(res);
     free_ast(ast);
     free_tokens(toks);
+    return 1;
 }
 
-void test() {
-  FILE *file = fopen("test.ss", "a+");
+void run_file(char* filename) {
+  FILE *file = fopen(filename, "a+");
   if (file == NULL) {
     printf("error opening file");
     return;
@@ -45,17 +48,20 @@ void test() {
 void ss_loop() {
   init();
   int status;
-  //test();
+
   do {
     char *line = ss_read();
     if (is_empty(line)) {
       free(line);
       continue;
     }
-    char **args = ss_split(line);
+    if (line[0] == ':' && line[1] == 'q') {
+      free(line);
+      break;
+    }
+    //char **args = ss_split(line);
     //status = ss_run(args);
-    run_eval(line);
-    status = 1;
+    status = run_eval(line);
 
     if (history && strcmp(line, history->first->prev->cur) != 0) {
       fprintf(histf, "%s\n", line);
@@ -63,9 +69,9 @@ void ss_loop() {
     } else
       free(line);
 
-    for (int i = 0; args[i] != NULL; i++)
-      free(args[i]);
-    free(args);
+    //for (int i = 0; args[i] != NULL; i++)
+      //free(args[i]);
+    //free(args);
   } while (status);
   destroy();
 }

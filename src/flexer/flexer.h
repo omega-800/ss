@@ -2,6 +2,8 @@ enum TokenType {
   TT_If,
   TT_Then,
   TT_Else,
+  TT_Let, 
+  TT_In,
   TT_True,
   TT_False,
   TT_Identifier,
@@ -59,4 +61,4 @@ struct TokenArray {
 struct TokenArray flex(const char *str);
 void free_tokens(struct TokenArray toks);
 void print_tokens(struct TokenArray toks);
-void print_type(enum TokenType type);
+void print_token_type(enum TokenType type);

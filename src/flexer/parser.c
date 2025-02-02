@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BUF_ARGS 8
+
 struct ASTNode *parse_statement(struct TokenArray tokens, int *cursor);
 struct ASTNode *parse_gr(struct TokenArray tokens, int *cursor);
 struct ASTNode *parse_prim(struct TokenArray tokens, int *cursor);
@@ -47,8 +49,41 @@ void free_ast(struct ASTNode *ast) {
     // free_primitive(ast->v.prim);
     free(ast->v.prim);
     break;
+  case NT_Call:
+    for (int i = 0; i < ast->v.call->len; i++) {
+      free_ast(ast->v.call->args[i]);
+    }
+    free(ast->v.call->args);
+    free(ast->v.call);
+    break;
+  case NT_LetIn:
+    for (int i = 0; i < ast->v.letin->len; i++) {
+      free_ast(ast->v.letin->let[i]->val);
+      free(ast->v.letin->let[i]->args);
+      free(ast->v.letin->let[i]);
+    }
+    free(ast->v.letin->let);
+    free_ast(ast->v.letin->in);
+    free(ast->v.letin);
+    break;
+  case NT_Identifier:
+    break;
   }
   free(ast);
+}
+
+void print_primitive_type(const enum PrimitiveType type) {
+  switch (type) {
+  case PT_Number:
+    printf("Number");
+    break;
+  case PT_String:
+    printf("String");
+    break;
+  case PT_Boolean:
+    printf("Boolean");
+    break;
+  }
 }
 
 void print_primitive(const struct Primitive *prim) {
@@ -68,7 +103,7 @@ void print_primitive(const struct Primitive *prim) {
 void print_ast(struct ASTNode *ast) {
   if (ast->type == NT_Group)
     printf("(");
-  else if (ast->type != NT_Primitive)
+  else if (ast->type != NT_Primitive && ast->type != NT_Call)
     printf("{");
   switch (ast->type) {
   case NT_IfElse:
@@ -80,11 +115,11 @@ void print_ast(struct ASTNode *ast) {
     break;
   case NT_Binary:
     print_ast(ast->v.bin->left);
-    print_type(ast->v.bin->value);
+    print_token_type(ast->v.bin->value);
     print_ast(ast->v.bin->right);
     break;
   case NT_Unary:
-    print_type(ast->v.un->value);
+    print_token_type(ast->v.un->value);
     print_ast(ast->v.un->child);
     break;
   case NT_Group:
@@ -93,10 +128,37 @@ void print_ast(struct ASTNode *ast) {
   case NT_Primitive:
     print_primitive(ast->v.prim);
     break;
+  case NT_LetIn:
+    printf("let[");
+    for (int i = 0; i < ast->v.letin->len; i++) {
+      printf("%s->", ast->v.letin->let[i]->name);
+      for (int j = 0; j < ast->v.letin->let[i]->len; j++)
+        printf("%s->", ast->v.letin->let[i]->args[j]);
+      print_ast(ast->v.letin->let[i]->val);
+      printf(";");
+    }
+    printf("]in[");
+    print_ast(ast->v.letin->in);
+    printf("]");
+    break;
+  case NT_Call:
+    printf("|%s", ast->v.call->name);
+    if (ast->v.call->len != 0) {
+      printf("<|");
+      for (int i = 0; i < ast->v.call->len; i++) {
+        print_ast(ast->v.call->args[i]);
+        if (i < ast->v.call->len - 1)
+          printf("<|");
+      }
+    }
+    printf("|");
+    break;
+  case NT_Identifier:
+    break;
   }
   if (ast->type == NT_Group)
     printf(")");
-  else if (ast->type != NT_Primitive)
+  else if (ast->type != NT_Primitive && ast->type != NT_Call)
     printf("}");
 }
 
@@ -105,10 +167,19 @@ struct ASTNode *parse_gr(struct TokenArray tokens, int *cursor) {
     return NULL;
   struct ASTNode *node = malloc(sizeof(struct ASTNode));
   struct Group *gr = malloc(sizeof(struct Group));
+  int prevcur = *cursor;
   node->type = NT_Group;
   node->v.gr = gr;
   (*cursor)++;
   node->v.gr->child = parse_statement(tokens, cursor);
+  if (node->v.gr->child == NULL || *cursor >= tokens.len ||
+      tokens.tokens[*cursor]->type != TT_RParen) {
+    if (node->v.gr->child != NULL)
+      free_ast(node->v.gr->child);
+    free(node);
+    (*cursor) = prevcur;
+    return NULL;
+  }
   (*cursor)++;
   return node;
 }
@@ -123,22 +194,26 @@ struct ASTNode *parse_ifelse(struct TokenArray tokens, int *cursor) {
   node->v.ifelse = val;
   (*cursor)++;
   node->v.ifelse->condition = parse_statement(tokens, cursor);
-  if (tokens.tokens[*cursor]->type != TT_Then)
+  if (node->v.ifelse->condition == NULL || *cursor >= tokens.len ||
+      tokens.tokens[*cursor]->type != TT_Then)
     goto freec;
   (*cursor)++;
   node->v.ifelse->truthy = parse_statement(tokens, cursor);
-  if (tokens.tokens[*cursor]->type != TT_Else)
+  if (node->v.ifelse->truthy == NULL || *cursor >= tokens.len ||
+      tokens.tokens[*cursor]->type != TT_Else)
     goto freet;
   (*cursor)++;
   node->v.ifelse->falsy = parse_statement(tokens, cursor);
-  (*cursor)++;
+  if (node->v.ifelse->falsy == NULL)
+    goto freet;
 
   return node;
 freet:
-  free_ast(node->v.ifelse->truthy);
-  goto freec;
+  if (node->v.ifelse->truthy != NULL)
+    free_ast(node->v.ifelse->truthy);
 freec:
-  free_ast(node->v.ifelse->condition);
+  if (node->v.ifelse->condition != NULL)
+    free_ast(node->v.ifelse->condition);
   free(node->v.ifelse);
   free(node);
   (*cursor) = prevcur;
@@ -151,16 +226,24 @@ struct ASTNode *parse_un(struct TokenArray tokens, int *cursor) {
     return NULL;
   struct ASTNode *node = malloc(sizeof(struct ASTNode));
   struct Unary *val = malloc(sizeof(struct Unary));
+  int prevcur = *cursor;
   node->type = NT_Unary;
   node->v.un = val;
   node->v.un->value = tokens.tokens[*cursor]->type;
   (*cursor)++;
   node->v.un->child = parse_expression(tokens, cursor);
-  return node;
+  if (node->v.un->child != NULL)
+    return node;
+  (*cursor) = prevcur;
+  free(node->v.un);
+  free(node);
+  return NULL;
 }
 
 struct ASTNode *parse_expression(struct TokenArray tokens, int *cursor) {
   struct ASTNode *node = NULL;
+  if (*cursor >= tokens.len)
+    return node;
   node = parse_gr(tokens, cursor);
   if (node == NULL)
     node = parse_un(tokens, cursor);
@@ -277,11 +360,13 @@ char *parse_str(char *str) {
   return str;
 }
 
+int is_prim(enum TokenType type) {
+  return type == TT_String || type == TT_Number || type == TT_False ||
+         type == TT_True;
+}
+
 struct ASTNode *parse_prim(struct TokenArray tokens, int *cursor) {
-  if (tokens.tokens[*cursor]->type != TT_String &&
-      tokens.tokens[*cursor]->type != TT_Number &&
-      tokens.tokens[*cursor]->type != TT_False &&
-      tokens.tokens[*cursor]->type != TT_True)
+  if (!is_prim(tokens.tokens[*cursor]->type))
     return NULL;
   struct ASTNode *node = malloc(sizeof(struct ASTNode));
   node->type = NT_Primitive;
@@ -308,20 +393,157 @@ struct ASTNode *parse_prim(struct TokenArray tokens, int *cursor) {
   return node;
 }
 
+char *parse_identifier(struct TokenArray tokens, int *cursor) {
+  if (tokens.tokens[*cursor]->type != TT_Identifier)
+    return NULL;
+  char *val = tokens.tokens[*cursor]->value;
+  (*cursor)++;
+  return val;
+}
+
+struct Assignment *parse_assignment(struct TokenArray tokens, int *cursor) {
+  char *name = parse_identifier(tokens, cursor);
+  if (name == NULL)
+    return NULL;
+  int prevcur = *cursor;
+  struct Assignment *res = malloc(sizeof(struct Assignment));
+  res->len = 0;
+  res->cap = BUF_ARGS;
+  res->args = malloc(sizeof(char *) * res->cap);
+  res->name = name;
+  while (1) {
+    if (res->len >= res->cap) {
+      res->cap += BUF_ARGS;
+      res->args = realloc(res->args, sizeof(char *) * res->cap);
+    }
+    res->args[res->len] = parse_identifier(tokens, cursor);
+    if (res->args[res->len] == NULL)
+      break;
+    res->len++;
+  }
+  if (*cursor + 1 >= tokens.len || tokens.tokens[*cursor]->type != TT_Assign)
+    // for(int i = 0; i < res->len; i++) free(res->args[i]);
+    goto freea;
+  (*cursor)++;
+
+  res->val = parse_statement(tokens, cursor);
+  if (res->val == NULL || *cursor >= tokens.len ||
+      tokens.tokens[*cursor]->type != TT_Semicolon) {
+    if (res->val != NULL)
+      free(res->val);
+    goto freea;
+  }
+
+  (*cursor)++;
+
+  return res;
+freea:
+  (*cursor) = prevcur;
+  free(res->args);
+  free(res);
+  return NULL;
+}
+
+struct ASTNode *parse_letin(struct TokenArray tokens, int *cursor) {
+  if (tokens.tokens[*cursor]->type != TT_Let)
+    return NULL;
+  struct ASTNode *node = malloc(sizeof(struct ASTNode));
+  struct LetIn *val = malloc(sizeof(struct LetIn));
+  int prevcur = *cursor;
+  node->type = NT_LetIn;
+  node->v.letin = val;
+  node->v.letin->len = 0;
+  node->v.letin->cap = BUF_ARGS;
+  node->v.letin->let = malloc(sizeof(struct Assignment *) * node->v.letin->cap);
+  (*cursor)++;
+
+  while (1) {
+    if (node->v.letin->len >= node->v.letin->cap) {
+      node->v.letin->cap += BUF_ARGS;
+      node->v.letin->let = realloc(
+          node->v.letin->let, sizeof(struct Assignment *) * node->v.letin->cap);
+    }
+    node->v.letin->let[node->v.letin->len] = parse_assignment(tokens, cursor);
+    if (*cursor >= tokens.len || node->v.letin->let[node->v.letin->len] == NULL)
+      break;
+    node->v.letin->len++;
+  }
+  if (*cursor + 1 >= tokens.len || tokens.tokens[*cursor]->type != TT_In)
+    goto free_in;
+
+  (*cursor)++;
+
+  node->v.letin->in = parse_statement(tokens, cursor);
+
+  if (node->v.letin->in == NULL)
+    goto free_in;
+
+  return node;
+
+free_in:
+  for (int i = 0; i < node->v.letin->len; i++) {
+    free_ast(node->v.letin->let[i]->val);
+    free(node->v.letin->let[i]);
+  }
+  free(node->v.letin->let);
+  free(node->v.letin);
+  free(node);
+  (*cursor) = prevcur;
+  return NULL;
+}
+
+struct ASTNode *parse_call(struct TokenArray tokens, int *cursor) {
+  if (tokens.tokens[*cursor]->type != TT_Identifier)
+    return NULL;
+
+  struct ASTNode *node = malloc(sizeof(struct ASTNode));
+  struct Call *val = malloc(sizeof(struct Call));
+  node->type = NT_Call;
+  node->v.call = val;
+  node->v.call->name = parse_identifier(tokens, cursor);
+  node->v.call->len = 0;
+  node->v.call->cap = BUF_ARGS;
+  node->v.call->args = malloc(sizeof(struct ASTNode *) * node->v.call->cap);
+
+  while (1) {
+    if (node->v.call->len >= node->v.call->cap) {
+      node->v.call->cap += BUF_ARGS;
+      node->v.call->args = realloc(
+          node->v.call->args, sizeof(struct ASTNode *) * node->v.call->cap);
+    }
+    node->v.call->args[node->v.call->len] = parse_expression(tokens, cursor);
+    if (node->v.call->args[node->v.call->len] == NULL)
+      break;
+    node->v.call->len++;
+  }
+
+  return node;
+}
+
 struct ASTNode *parse_statement(struct TokenArray tokens, int *cursor) {
-  struct ASTNode *ast = NULL;
+  struct ASTNode *node = NULL;
   if (*cursor >= tokens.len)
-    return ast;
-  ast = parse_bin(tokens, cursor);
-  if (ast == NULL)
-    ast = parse_expression(tokens, cursor);
-  if (ast == NULL)
-    ast = parse_ifelse(tokens, cursor);
-  return ast;
+    return node;
+  node = parse_call(tokens, cursor);
+  if (node == NULL)
+    node = parse_bin(tokens, cursor);
+  if (node == NULL)
+    node = parse_expression(tokens, cursor);
+  if (node == NULL)
+    node = parse_ifelse(tokens, cursor);
+  if (node == NULL)
+    node = parse_letin(tokens, cursor);
+  return node;
 }
 
 struct ASTNode *parse_ast(const struct TokenArray tokens) {
   int cursor = 0;
-  struct ASTNode *ast = parse_statement(tokens, &cursor);
-  return ast;
+  struct ASTNode *stmt = parse_statement(tokens, &cursor);
+  if (cursor < tokens.len) {
+    printf("\ncouldn't parse everything, stopped at token %i of %i\n", cursor,
+           tokens.len);
+    free_ast(stmt);
+    return NULL;
+  }
+  return stmt;
 }

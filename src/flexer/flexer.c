@@ -6,9 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NR_RG 10
+
 regex_t *r_if;
 regex_t *r_then;
 regex_t *r_else;
+regex_t *r_let;
+regex_t *r_in;
 regex_t *r_true;
 regex_t *r_false;
 regex_t *r_identifier;
@@ -17,18 +21,22 @@ regex_t *r_number;
 regex_t *r_arena;
 
 void flex_init() {
-  r_arena = malloc(sizeof(regex_t) * 8);
+  r_arena = malloc(sizeof(regex_t) * NR_RG);
   r_if = r_arena;
   r_then = r_arena + 1;
   r_else = r_arena + 2;
-  r_true = r_arena + 3;
-  r_false = r_arena + 4;
-  r_identifier = r_arena + 5;
-  r_string = r_arena + 6;
-  r_number = r_arena + 7;
+  r_let = r_arena + 3;
+  r_in = r_arena + 4;
+  r_true = r_arena + 5;
+  r_false = r_arena + 6;
+  r_identifier = r_arena + 7;
+  r_string = r_arena + 8;
+  r_number = r_arena + 9;
   regcomp(r_if, "^if", 0);
   regcomp(r_then, "^then", 0);
   regcomp(r_else, "^else", 0);
+  regcomp(r_let, "^let", 0);
+  regcomp(r_in, "^in", 0);
   regcomp(r_true, "^true", 0);
   regcomp(r_false, "^false", 0);
   regcomp(r_identifier, "^[a-zA-Z_][0-9a-zA-Z_'-]*", 0);
@@ -40,6 +48,8 @@ void flex_destroy() {
   regfree(r_if);
   regfree(r_then);
   regfree(r_else);
+  regfree(r_let);
+  regfree(r_in);
   regfree(r_true);
   regfree(r_false);
   regfree(r_identifier);
@@ -163,12 +173,11 @@ int flex_match_next(const char *input, regmatch_t *match) {
   case '#':
     return flex_match(TT_Pound, match);
   }
-  regex_t *r_all[] = {r_if,         r_then,   r_else,   r_true, r_false,
-                      r_identifier, r_string, r_number, r_arena};
-  for (int i = 0; i <= 8; i++)
-    if (flexec(r_all[i], input, match)) {
+  regex_t *r_all[NR_RG] = {r_if,    r_then,       r_else,   r_let,    r_in,   r_true,
+                      r_false, r_identifier, r_string, r_number};
+  for (int i = 0; i < NR_RG; i++)
+    if (flexec(r_all[i], input, match)) 
       return i + 1;
-    }
   return 0;
 }
 
@@ -194,7 +203,7 @@ void print_tokens(struct TokenArray toks) {
            toks.tokens[i]->value);
 }
 
-void print_type(enum TokenType type) {
+void print_token_type(enum TokenType type) {
   switch (type) {
   case TT_If:
     printf("if");
@@ -204,6 +213,12 @@ void print_type(enum TokenType type) {
     break;
   case TT_Else:
     printf("else");
+    break;
+  case TT_Let:
+    printf("let");
+    break;
+  case TT_In:
+    printf("in");
     break;
   case TT_True:
     printf("true");
@@ -350,8 +365,10 @@ struct TokenArray flex(const char *input) {
       break;
     // printf("pos: %lu, len: %i\n", cursor, tokens.len);
     int res = flex_match_next(input + cursor, &match);
-    if (!res) {
-      printf("error at pos: %lu\n", cursor);
+    if (res == 0) {
+      printf("error at pos: %lu, char: %c, prev tok: %s, type: ", cursor, input[cursor], tokens.tokens[tokens.len-1]->value);
+      print_token_type(tokens.tokens[tokens.len-1]->type);
+      printf("\n");
       exit(1);
     }
     char *value = malloc(sizeof(char) * (match.rm_eo + 1));
