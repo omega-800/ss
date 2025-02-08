@@ -7,10 +7,8 @@
  * <Call>         ::= <Identifier> <Expression>*
  * <Assignments>  ::= <Assignment>+
  * <Assignment>   ::= <Identifier>+ = <Statement> ';'
- * TODO: add identifier to binary / expression
- *
  * <Binary>       ::= <Expression> ('%'|'^'|'*'|'/'|'+'|'-'|'=='|'>'|'>='|'<'|'<='|'!='|'&&'|'||') <Expression>
- * <Expression>   ::= (<Group> | <Unary> | <Primitive>)
+ * <Expression>   ::= (<Group> | <Unary> | <Primitive> | <Call>)
  * <Unary>        ::= ('!'|'-') <Expression>
  * <Group>        ::= '(' <Statement> ')'
  * <Primitive>    ::= <String> | <Number> | <Boolean>
@@ -108,13 +106,13 @@ struct Primitive {
 struct ASTNode {
   enum ASTNodeType type;
   union {
-    struct IfElse *ifelse;
-    struct Binary *bin;
-    struct Unary *un;
-    struct Group *gr;
-    struct Primitive *prim;
-    struct LetIn *letin;
-    struct Call *call;
+    struct IfElse ifelse;
+    struct Binary bin;
+    struct Unary un;
+    struct Group gr;
+    struct Primitive prim;
+    struct LetIn letin;
+    struct Call call;
   } v;
 };
 

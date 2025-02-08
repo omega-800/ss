@@ -70,9 +70,9 @@ struct Primitive *arena_add(struct PrimitiveArena *arena) {
 
 struct Primitive *eval_un(struct ASTNode *node, struct PrimitiveArena *arena,
                           struct Context ctx) {
-  struct Primitive *val = eval_ast(node->v.un->child, arena, ctx);
+  struct Primitive *val = eval_ast(node->v.un.child, arena, ctx);
   struct Primitive *res = arena_add(arena);
-  if (node->v.un->value == TT_Exclamation) {
+  if (node->v.un.value == TT_Exclamation) {
     if (val->type != PT_Boolean) {
       printf("eval_bin_un: erroneous type ");
       print_primitive_type(val->type);
@@ -81,7 +81,7 @@ struct Primitive *eval_un(struct ASTNode *node, struct PrimitiveArena *arena,
     }
     res->type = PT_Boolean;
     res->v.b = !val->v.b;
-  } else if (node->v.un->value == TT_Minus) {
+  } else if (node->v.un.value == TT_Minus) {
     if (val->type != PT_Number) {
       printf("eval_bin_un: erroneous type ");
       print_primitive_type(val->type);
@@ -92,7 +92,7 @@ struct Primitive *eval_un(struct ASTNode *node, struct PrimitiveArena *arena,
     res->v.num = -val->v.num;
   } else {
     printf("eval_bin_un: erroneous op type ");
-    print_token_type(node->v.un->value);
+    print_token_type(node->v.un.value);
     exit(1);
   }
   return res;
@@ -103,26 +103,26 @@ struct Primitive *eval_call(struct ASTNode *node, struct PrimitiveArena *arena,
   if (node->type != NT_Call)
     return NULL;
 
-  struct Assignment *var = find_in_ctx(node->v.call->name, ctx);
+  struct Assignment *var = find_in_ctx(node->v.call.name, ctx);
   if (var == NULL) {
-    printf("unbound variable %s\n", node->v.call->name);
+    printf("unbound variable %s\n", node->v.call.name);
     exit(1);
   }
 
-  if (var->len < node->v.call->len)
-    printf("judihui\n");
+  if (var->len < node->v.call.len)
+    printf("expected %lu args in fn %s, got %lu. you fucked something up\n", var->len, var->name, node->v.call.len);
 
-  size_t add = node->v.call->len;
+  size_t add = node->v.call.len;
 
   if (ctx.len + add >= ctx.cap) {
-    ctx.cap += (((int)node->v.call->len / CTX_BUF) + 1) * CTX_BUF;
+    ctx.cap += (((int)node->v.call.len / CTX_BUF) + 1) * CTX_BUF;
     ctx.vars = realloc(ctx.vars, sizeof(struct Assignment *) * ctx.cap);
   }
 
-  for (int i = 0; i < node->v.call->len; i++) {
+  for (int i = 0; i < node->v.call.len; i++) {
     struct Assignment *ass = malloc(sizeof(struct Assignment));
 
-    ass->val = node->v.call->args[i];
+    ass->val = node->v.call.args[i];
     ass->name = var->args[i];
     ass->cap = 0;
     ass->len = 0;
@@ -146,33 +146,33 @@ struct Primitive *eval_letin(struct ASTNode *node, struct PrimitiveArena *arena,
   if (node->type != NT_LetIn)
     return NULL;
 
-  if (ctx.len + node->v.letin->len >= ctx.cap) {
-    ctx.cap += (((int)node->v.letin->len / CTX_BUF) + 1) * CTX_BUF;
+  if (ctx.len + node->v.letin.len >= ctx.cap) {
+    ctx.cap += (((int)node->v.letin.len / CTX_BUF) + 1) * CTX_BUF;
     ctx.vars = realloc(ctx.vars, sizeof(struct Assignment *) * ctx.cap);
   }
 
-  for (int i = 0; i < node->v.letin->len; i++) {
-    ctx.vars[ctx.len] = node->v.letin->let[i];
+  for (int i = 0; i < node->v.letin.len; i++) {
+    ctx.vars[ctx.len] = node->v.letin.let[i];
     ctx.len++;
   }
 
-  struct Primitive *res = eval_ast(node->v.letin->in, arena, ctx);
+  struct Primitive *res = eval_ast(node->v.letin.in, arena, ctx);
 
-  ctx.len = ctx.len - node->v.letin->len;
+  ctx.len = ctx.len - node->v.letin.len;
 
   return res;
 }
 
 struct Primitive *eval_gr(struct ASTNode *node, struct PrimitiveArena *arena,
                           struct Context ctx) {
-  return eval_ast(node->v.gr->child, arena, ctx);
+  return eval_ast(node->v.gr.child, arena, ctx);
 }
 
 struct Primitive *eval_ifelse(struct ASTNode *node,
                               struct PrimitiveArena *arena,
                               struct Context ctx) {
   const struct Primitive *condition =
-      eval_ast(node->v.ifelse->condition, arena, ctx);
+      eval_ast(node->v.ifelse.condition, arena, ctx);
   if (condition->type != PT_Boolean) {
     printf("eval_bin_un: erroneous condition type ");
     print_primitive_type(condition->type);
@@ -180,13 +180,13 @@ struct Primitive *eval_ifelse(struct ASTNode *node,
     exit(1);
   }
   if (condition->v.b)
-    return eval_ast(node->v.ifelse->truthy, arena, ctx);
-  return eval_ast(node->v.ifelse->falsy, arena, ctx);
+    return eval_ast(node->v.ifelse.truthy, arena, ctx);
+  return eval_ast(node->v.ifelse.falsy, arena, ctx);
 }
 
 struct Primitive *eval_prim(struct ASTNode *node, struct PrimitiveArena *arena,
                             struct Context ctx) {
-  return node->v.prim;
+  return &node->v.prim;
 }
 
 char *eval_bin_str(const enum TokenType op, const struct Primitive *lhs,
@@ -256,10 +256,10 @@ int eval_bin_cmp(const enum TokenType op, const struct Primitive *lhs,
 
 struct Primitive *eval_bin(struct ASTNode *node, struct PrimitiveArena *arena,
                            struct Context ctx) {
-  const struct Primitive *lhs = eval_ast(node->v.bin->left, arena, ctx);
-  const struct Primitive *rhs = eval_ast(node->v.bin->right, arena, ctx);
+  const struct Primitive *lhs = eval_ast(node->v.bin.left, arena, ctx);
+  const struct Primitive *rhs = eval_ast(node->v.bin.right, arena, ctx);
   struct Primitive *res = arena_add(arena);
-  if (node->v.bin->value == TT_Plus) {
+  if (node->v.bin.value == TT_Plus) {
     char *str = eval_bin_str(TT_Plus, lhs, rhs);
     if (str != NULL) {
       res->type = PT_String;
@@ -267,7 +267,7 @@ struct Primitive *eval_bin(struct ASTNode *node, struct PrimitiveArena *arena,
       return res;
     }
   }
-  switch (node->v.bin->value) {
+  switch (node->v.bin.value) {
   case TT_Plus:
   case TT_Percent:
   case TT_Minus:
@@ -275,7 +275,7 @@ struct Primitive *eval_bin(struct ASTNode *node, struct PrimitiveArena *arena,
   case TT_Asterisk:
   case TT_Circumflex:
     res->type = PT_Number;
-    res->v.num = eval_bin_num(node->v.bin->value, lhs, rhs);
+    res->v.num = eval_bin_num(node->v.bin.value, lhs, rhs);
     return res;
   case TT_Leq:
   case TT_Less:
@@ -284,12 +284,12 @@ struct Primitive *eval_bin(struct ASTNode *node, struct PrimitiveArena *arena,
   case TT_Eq:
   case TT_Neq:
     res->type = PT_Boolean;
-    res->v.num = eval_bin_cmp(node->v.bin->value, lhs, rhs);
+    res->v.num = eval_bin_cmp(node->v.bin.value, lhs, rhs);
     return res;
   case TT_And:
   case TT_Or:
     res->type = PT_Boolean;
-    res->v.num = eval_bin_bool(node->v.bin->value, lhs, rhs);
+    res->v.num = eval_bin_bool(node->v.bin.value, lhs, rhs);
     return res;
   default:
     return NULL;
