@@ -1,18 +1,18 @@
 # ss
 
-~A radically Simple Shell.~ 
-A Super Simple repl.
-Please don't be offended by its name, it was inspired by elon musk.
+~A radically Simple Shell.~      
+A Super Simple repl.     
+Please don't be offended by its name, it was inspired by elon musk sending his heart out to all of us.    
 
 ## syntax
 
-Heavily inspired by [haskell](https://www.haskell.org/) and [nix](https://nixos.org/).
-See `./src/flexer/parser.h` for EBNF grammar definition. 
+Heavily inspired by [haskell](https://www.haskell.org/) and [nix](https://nixos.org/).      
+See `./src/flexer/parser.h` for EBNF grammar definition.       
 
 ## examples
 
-Run `make && ./ss` or `nix run` to start the repl.
-Run `make && ./ss -f filename.nlys` or `nix run . -- -f filename.nlys` to evaluate an ss script.
+Run `make && ./ss` or `nix run` to start the repl.       
+Run `make && ./ss -f filename.nlys` or `nix run . -- -f filename.nlys` to evaluate an ss expression.      
 
 ```
 # if statement
