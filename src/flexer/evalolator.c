@@ -105,12 +105,25 @@ struct Primitive *eval_call(struct ASTNode *node, struct PrimitiveArena *arena,
 
   struct Assignment *var = find_in_ctx(node->v.call.name, ctx);
   if (var == NULL) {
+    // ss_run(node->v.call.name);
+    /*
+    char cmdbuf[512];
+    snprintf(cmdbuf, sizeof cmdbuf, "command -v %s > /dev/null 2>&1",
+             node->v.call.name);
+    if (!system(cmdbuf)) {
+      // command exists
+    } else {
+      printf("unbound variable %s\n", node->v.call.name);
+      exit(1);
+    }
+    */
     printf("unbound variable %s\n", node->v.call.name);
     exit(1);
   }
 
   if (var->len < node->v.call.len)
-    printf("expected %lu args in fn %s, got %lu. you fucked something up\n", var->len, var->name, node->v.call.len);
+    printf("expected %lu args in fn %s, got %lu. you fucked something up\n",
+           var->len, var->name, node->v.call.len);
 
   size_t add = node->v.call.len;
 

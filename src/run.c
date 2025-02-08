@@ -19,6 +19,7 @@ int run_eval(const char *line) {
     print_primitive(res);
     printf("\n");
     free_primitive(res);
+    free(res);
     free_ast(ast);
     free_tokens(toks);
     return 1;

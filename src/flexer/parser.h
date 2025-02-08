@@ -3,10 +3,9 @@
  * <Program>      ::= <Statement>
  * <Statement>    ::= <IfElse> | <Binary> | <Unary> | <Group> | <Primitive> | <LetIn> | <Call>
  * <IfElse>       ::= 'if' <Statement> 'then' <Statement> 'else' <Statement>
- * <LetIn>        ::= 'let' <Assignments> 'in' <Statement>
+ * <LetIn>        ::= 'let' <Assignment>+ 'in' <Statement>
+ * <Assignment>   ::= <Identifier>+ '=' <Statement> ';'
  * <Call>         ::= <Identifier> <Expression>*
- * <Assignments>  ::= <Assignment>+
- * <Assignment>   ::= <Identifier>+ = <Statement> ';'
  * <Binary>       ::= <Expression> ('%'|'^'|'*'|'/'|'+'|'-'|'=='|'>'|'>='|'<'|'<='|'!='|'&&'|'||') <Expression>
  * <Expression>   ::= (<Group> | <Unary> | <Primitive> | <Call>)
  * <Unary>        ::= ('!'|'-') <Expression>
@@ -21,6 +20,12 @@
  * STR = ".*"
  * NUM = \d+
  * BIN = (true|false)
+ */
+
+/**
+ * maybe later: 
+ * <Cmd>          ::= '$(' <Identifier> (<Statement>)* ')'
+ * <Path>         ::= ( ('../'|'./'|'/') <Identifier> )*
  */
 #include <stddef.h>
 

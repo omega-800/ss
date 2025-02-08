@@ -19,7 +19,7 @@ struct ASTNode *parse_call(struct TokenArray tokens, int *cursor);
 void free_primitive(struct Primitive *prim) {
   if (prim->type == PT_String)
     free(prim->v.str);
-  free(prim);
+  //free(prim);
 }
 
 void free_ast(struct ASTNode *ast) {
@@ -43,7 +43,7 @@ void free_ast(struct ASTNode *ast) {
     break;
   case NT_Primitive:
     // free(ast->v.prim->value);
-    // free_primitive(ast->v.prim);
+    free_primitive(&ast->v.prim);
     break;
   case NT_Call:
     for (int i = 0; i < ast->v.call.len; i++) {
@@ -233,7 +233,7 @@ struct ASTNode *parse_expression(struct TokenArray tokens, int *cursor) {
   node = parse_gr(tokens, cursor);
   if (node == NULL)
     node = parse_un(tokens, cursor);
-  if (node == NULL)
+  if (node == NULL) 
     node = parse_prim(tokens, cursor);
   if (node == NULL)
     node = parse_call(tokens, cursor);
@@ -329,18 +329,18 @@ struct ASTNode *parse_bin(struct TokenArray tokens, int *cursor) {
 
 char *parse_str(char *str) {
   size_t len = strlen(str) - 1;
-  str = removeat(removeat(str, len), 0);
-  len--;
+  char *newstr = malloc(len);
+  newstr = memcpy(newstr, str + 1, len);
+  newstr[len - 1] = '\0';
   if (len > 0) {
     int i = 0;
     for (; i < len - 1; i++)
-      if (str[i] == '\\' && (str[i + 1] == '"' || str[i + 1] == '\\')) {
-        str = removeat(str, i);
+      if (newstr[i] == '\\' && (newstr[i + 1] == '"' || newstr[i + 1] == '\\')) {
+        newstr = removeat(newstr, i);
         len--;
       }
   }
-  // str[strlen(str) - 1] = '\0';
-  return str;
+  return newstr;
 }
 
 int is_prim(enum TokenType type) {
