@@ -9,23 +9,23 @@
 #include <string.h>
 
 int run_eval(const char *line) {
-    //printf("%s\n",line);
-    struct TokenArray toks = flex(line);
-    //print_tokens(toks);
-    struct ASTNode *ast = parse_ast(toks);
-    //print_ast(ast);
-    //printf("\n");
-    struct Primitive *res = evalolate(ast);
-    print_primitive(res);
-    printf("\n");
-    free_primitive(res);
-    free(res);
-    free_ast(ast);
-    free_tokens(toks);
-    return 1;
+  // printf("%s\n",line);
+  struct TokenArray toks = flex(line);
+  // print_tokens(toks);
+  struct ASTNode *ast = parse_ast(toks);
+  // print_ast(ast);
+  // printf("\n");
+  struct Primitive *res = evalolate(ast);
+  print_primitive(res);
+  printf("\n");
+  free_primitive(res);
+  free(res);
+  free_ast(ast);
+  free_tokens(toks);
+  return 1;
 }
 
-void run_file(char* filename) {
+void run_file(char *filename) {
   FILE *file = fopen(filename, "a+");
   if (file == NULL) {
     printf("error opening file");
@@ -46,7 +46,7 @@ void run_file(char* filename) {
   exit(1);
 }
 
-void ss_loop() {
+void ss_loop(int sh) {
   init();
   int status;
 
@@ -56,23 +56,34 @@ void ss_loop() {
       free(line);
       continue;
     }
-    if (line[0] == ':' && line[1] == 'q') {
-      free(line);
-      break;
+    char **args;
+    if (sh) {
+      args = ss_split(line);
+      status = ss_run(args);
+
+      if (history && strcmp(line, history->first->prev->cur) != 0) {
+        fprintf(histf, "%s\n", line);
+        list_append(history, line);
+      } else
+        free(line);
+
+      for (int i = 0; args[i] != NULL; i++)
+        free(args[i]);
+      free(args);
+    } else {
+      if (line[0] == ':' && line[1] == 'q') {
+        free(line);
+        break;
+      }
+      status = run_eval(line);
+
+      if (history && strcmp(line, history->first->prev->cur) != 0) {
+        fprintf(histf, "%s\n", line);
+        list_append(history, line);
+      } else
+        free(line);
     }
-    //char **args = ss_split(line);
-    //status = ss_run(args);
-    status = run_eval(line);
 
-    if (history && strcmp(line, history->first->prev->cur) != 0) {
-      fprintf(histf, "%s\n", line);
-      list_append(history, line);
-    } else
-      free(line);
-
-    //for (int i = 0; args[i] != NULL; i++)
-      //free(args[i]);
-    //free(args);
   } while (status);
   destroy();
 }
